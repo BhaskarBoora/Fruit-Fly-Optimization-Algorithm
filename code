@@ -1,0 +1,123 @@
+import sys
+import random
+import math
+#import numpy as np
+import pandas as pd
+#from sklearn.datasets import load_breast_cancer
+from sklearn import svm
+from sklearn.model_selection import cross_val_score
+from sklearn import preprocessing
+from sklearn.utils import shuffle
+
+def readDataset():
+    dataset = pd.read_csv('breastcancer.csv', header=None)
+    dataset[10] = dataset[10].replace(2,0)
+    dataset[10] = dataset[10].replace(4,1)
+    dataset = dataset[dataset[6]!='?']
+    #dataset.replace('?', -9999, inplace=True)
+    #dataset = dataset.applymap(np.int64)
+    data = dataset.iloc[:, 1:-1].values
+    target = dataset.iloc[:, -1].values
+    return (data, target)
+
+def readDiabetesDataset():
+    dataset = pd.read_csv('diabetes.csv')
+    data = dataset.iloc[:,:-1].values
+    target = dataset.iloc[:,-1].values
+    return (data,target)
+
+def readParkinsonsDataset():
+    dataset = pd.read_csv('parkinsons.csv')
+    dataset = dataset.drop('name',1)
+    data = dataset.drop('status',1).values
+    target = dataset.iloc[:,16].values
+    return (data, target)
+
+def readThyroidDataset():
+    dataset = pd.read_csv('thyroid.csv', header=None)
+    dataset = shuffle(dataset)
+    target = dataset.iloc[:,0].values
+    data = dataset.iloc[:, 1:].values
+    return (data, target)
+
+class fly:
+    def __init__(self, x1, y1, x2, y2):
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+def fitness(data_scaled, target, x,y):
+    clf = svm.SVC(kernel='rbf', C=x, gamma=y)
+    scores = cross_val_score(clf,data_scaled, target, cv=10)
+    #print(scores)   
+    #print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() * 2))
+    #print(scores)
+    return scores.mean()
+
+def run(data_scaled, target, population, x_axis1, y_axis1, bestSmell, x_axis2, y_axis2):
+    
+    flies = []
+    
+    for i in range(0,population):
+        
+        xi1 = x_axis1 + random.uniform(-1,1)
+        yi1 = y_axis1 + random.uniform(-1,1)
+        xi2 = x_axis2 + random.uniform(-1,1)
+        yi2 = y_axis2 + random.uniform(-1,1)
+        
+        
+        flies.append(fly(xi1,yi1,xi2,yi2))
+        
+    minSmell =  -sys.maxsize
+    bestIndex = -1
+    
+    for currFly in flies:
+        
+        d1 = math.sqrt(math.pow(currFly.x1,2)+math.pow(currFly.y1,2))
+        d2 = math.sqrt(math.pow(currFly.x2,2)+math.pow(currFly.y2,2))
+        
+        d1_inv = round(1/d1,2)
+        d2_inv = round(1/d2,2)
+        d1_inv = min(d1_inv,math.pow(2,15))
+        d1_inv = max(d1_inv,math.pow(2,-5))
+        d2_inv = min(d2_inv,2)
+        d2_inv = max(d2_inv,math.pow(2,-15))
+        
+
+        
+        smell = fitness(data_scaled, target, d1_inv, d2_inv)
+        if(minSmell < smell):
+            minSmell = smell
+            bestIndex = flies.index(currFly)
+    
+    bestSmell = minSmell
+    x_axis1 = flies[bestIndex].x1
+    y_axis1 = flies[bestIndex].y1
+    x_axis2 = flies[bestIndex].x2
+    y_axis2 = flies[bestIndex].y2
+    
+    return (x_axis1, y_axis1, bestSmell, x_axis2, y_axis2)
+
+
+def main():
+    population = 10
+    x_axis1 = random.uniform(0,1)
+    y_axis1 = random.uniform(0,1)
+    x_axis2 = random.uniform(0,1)
+    y_axis2 = random.uniform(0,1)
+    bestSmell = sys.maxsize
+    max_iter = 250
+    
+    data, target = readDiabetesDataset()
+    data_scaled = preprocessing.scale(data)
+    
+    for i in range(max_iter):
+        print(f'Running iteration {i+1} ...')
+        x_axis1, y_axis1, bestSmell, x_axis2, y_axis2 = run(data_scaled, target, population, x_axis1, y_axis1, bestSmell, x_axis2, y_axis2)
+        print(round((1/math.sqrt(math.pow(x_axis1,2)+math.pow(y_axis1,2))),2), round((1/math.sqrt(math.pow(x_axis2,2)+math.pow(y_axis2,2))),2), bestSmell)
+
+main()
+
+#0.41 0.04 0.9722
+#
